@@ -39,7 +39,7 @@ classdef MCML_model2 < handle
     end
     
     methods
-        function obj = MCML_model2(ua, us, g, d, r, ni, nt, iterations, slice)
+        function obj = MCML_model(ua, us, g, d, r, ni, nt, iterations, slice)
             %   MCML_model: Construct an instance of this class
             %   Basic parameter of MCML
             obj.ua = ua;
