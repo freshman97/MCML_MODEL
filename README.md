@@ -30,6 +30,6 @@
 * check_dead      % check dead or not
 * simulate_once   % simulate once
 * simulate        % simulate iterations time
-* imshow_absorption % show the absorption distribution in x,y,z and calculate the decay rate
+* imshow_absorption % show the absorption distribution in x,y,z and calculate the decay rate and Rd distribution.
 
 ### free copyright by Zheyuan Zhang
