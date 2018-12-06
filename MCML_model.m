@@ -1,4 +1,4 @@
-classdef MCML_model2 < handle
+classdef MCML_model < handle
     %   This code constructs light transport in multi-layers model
     %   Coded by Zheyuan
     
@@ -21,6 +21,8 @@ classdef MCML_model2 < handle
         distance=0;
         hit_bool=0;
         
+        incident_angle = 0; % incident angle
+        
         rs=0;
         final_result; % to record the final weight absorption matrix
         temp_result;
@@ -39,7 +41,7 @@ classdef MCML_model2 < handle
     end
     
     methods
-        function obj = MCML_model(ua, us, g, d, r, ni, nt, iterations, slice)
+        function obj = MCML_model(ua, us, g, d, r, ni, nt, incident_angle, iterations, slice)
             %   MCML_model: Construct an instance of this class
             %   Basic parameter of MCML
             obj.ua = ua;
@@ -49,6 +51,7 @@ classdef MCML_model2 < handle
             obj.ni = ni;
             obj.nt = nt;
             obj.r = r;
+            obj.incident_angle = incident_angle;
             obj.iterations = iterations;
             obj.slice = slice;
             % obj.ut = ua + (1 - g)*us;
@@ -57,8 +60,8 @@ classdef MCML_model2 < handle
             obj.total_result = zeros(d*slice,r*slice, r*slice);
             obj.temp_result = zeros(d*slice,r*slice, r*slice);
             obj.final_result = zeros(d*slice,r*slice); % to record the final weight absorption matrix
-            obj.R_final_result = zeros(r*slice,1); % to record the final weight reflectance
-            obj.T_final_result = zeros(r*slice,1); % to record the final weight transmit
+            obj.R_final_result = zeros(2*r*slice,1); % to record the final weight reflectance
+            obj.T_final_result = zeros(2*r*slice,1); % to record the final weight transmit
             obj.Z_final_result = zeros(d*slice,1); % to record the Z direction
         end
         
@@ -66,9 +69,9 @@ classdef MCML_model2 < handle
             obj.x=0;   % position of photon package along x
             obj.y=0;   % position of photon package along y
             obj.z=0;   % position of photon package along z(depth direction)
-            obj.vx=0;  % direction of photon package along x
+            obj.vx=obj.ni*sin(obj.incident_angle/180*pi)/obj.nt;  % direction of photon package along x
             obj.vy=0;  % direction of photon package along y
-            obj.vz=1;  % direction of photon package along z(depth direction)
+            obj.vz=sqrt(1-obj.vx^2);  % direction of photon package along z(depth direction)
             obj.weight=1-((obj.ni-obj.nt)/(obj.ni+obj.nt))^2; % weight of each photon package
             obj.out_bool=0;  % whether the photon package is outside
             obj.dead_bool=0; % the survive condition of photon package
@@ -161,6 +164,13 @@ classdef MCML_model2 < handle
                  
                  obj.out_bool=1;
                  obj.dead_bool=1;
+                 
+                 r_id = floor((obj.x + obj.r)*obj.slice);
+                 
+                 if r_id>=1&&r_id<obj.r*2*obj.slice
+                     obj.R_final_result(r_id) =  obj.R_final_result(r_id) + obj.weight;
+                 end
+                 
             end
             
         end
@@ -168,11 +178,11 @@ classdef MCML_model2 < handle
         function obj=absorption_record(obj, delta_weight)
             
             dis_x = abs(obj.x)*obj.slice;
-            x_id = round(dis_x)*sign(obj.x)+1+obj.slice/2;
+            x_id = round(dis_x)*sign(obj.x)+1+obj.r*obj.slice/2;
             % w1 = dis_x - floor(dis_x);
             
             dis_y = abs(obj.y)*obj.slice;
-            y_id = round(dis_y)*sign(obj.y)+1+obj.slice/2;
+            y_id = round(dis_y)*sign(obj.y)+1+obj.r*obj.slice/2;
             
             z_id = floor(obj.z*obj.slice)+1;
             
@@ -219,7 +229,6 @@ classdef MCML_model2 < handle
                     obj.distance = obj.distance - obj.db*obj.ut;
                     obj=obj.hit_boundary();
                     
-                    
                 else
                     obj=obj.move(obj.distance/obj.ut);
                     
@@ -246,7 +255,7 @@ classdef MCML_model2 < handle
         function obj=simulate(obj)
             rng('shuffle');
             for i=1:obj.iterations
-                 obj=obj.initial_package();
+                obj=obj.initial_package();
                 obj=obj.simulate_once();
             end
         end
@@ -263,7 +272,7 @@ classdef MCML_model2 < handle
             
             colormap jet;
             figure(3);
-            imagesc(log(squeeze(sum(obj.total_result,2))))
+            imagesc(log(squeeze(sum(obj.total_result,3))))
             title('Absorption in the slice')
             
             colormap jet;
@@ -271,7 +280,12 @@ classdef MCML_model2 < handle
             x_log=(round(obj.slice/4):obj.slice/2)./obj.slice;
             p = polyfit(x_log', s_log, 1);
             sprintf('%f, %f',p(1), p(2))
-            file_name=[num2str(obj.iterations),'_',num2str(obj.nt*100),'model.mat'];
+            figure(4)
+            semilogy((1:2*obj.r*obj.slice)/obj.slice-obj.r, ...
+                obj.R_final_result/obj.iterations*100)
+            file_name=[num2str(obj.incident_angle),'_',...
+                num2str(obj.ua),'_',num2str(obj.us),'_', num2str(obj.iterations),...
+                '_',num2str(obj.nt*100),'model2.mat'];
             save(file_name,'obj');
         end
     end
